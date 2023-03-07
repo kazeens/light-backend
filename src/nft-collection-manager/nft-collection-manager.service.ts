@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, ObjectId } from 'mongoose';
 import { INftCollectionManager } from 'src/interface/nftCollectionManager.interface';
 import { CreateNftCollectionManagerDto } from 'src/dto/createNftCollectionManager.dto';
+import { UpdateNftCollectionManagerDto } from 'src/dto/updateNftCollectionManager.dto';
 
 @Injectable()
 export class NftCollectionManagerService {
@@ -18,6 +19,35 @@ export class NftCollectionManagerService {
       createNftCollectionManagerDto,
     );
     return newNftCollectionManager.save();
+  }
+
+  async updateByNftCollectionManagerAddress(
+    contractAddress: string,
+    nftCollectionManagerDto: UpdateNftCollectionManagerDto,
+  ): Promise<INftCollectionManager> {
+    const newNftCollectionManager =
+      await this.nftCollectionManagerModel.updateOne(
+        {
+          contractAddress,
+        },
+        { $set: nftCollectionManagerDto },
+      );
+
+      console.log('newNftCollectionManager', newNftCollectionManager)
+
+      const updated = this.findByCollectionManagerAddress(contractAddress);
+      console.log('updated', updated)
+
+      return updated;
+  }
+
+  async findByCollectionManagerAddress(address: string) {
+    const existingManagerContract =
+      await this.nftCollectionManagerModel.findOne({
+        contractAddress: address,
+      });
+
+    return existingManagerContract;
   }
 
   async findByOwnerAddress(
