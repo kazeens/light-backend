@@ -5,6 +5,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { NftCollectionManagerModule } from './nft-collection-manager/nft-collection-manager.module';
+import { NftCollectionMintModule } from './nft-collection-mint/nft-collection-mint.module';
 import * as Joi from '@hapi/joi';
 
 @Module({
@@ -42,6 +43,7 @@ import * as Joi from '@hapi/joi';
       inject: [ConfigService],
     }),
     NftCollectionManagerModule,
+    NftCollectionMintModule,
   ],
   controllers: [AppController],
   providers: [AppService],

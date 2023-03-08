@@ -16,4 +16,6 @@ export class CreateNftCollectionManagerDto {
   @MaxLength(48)
   @MinLength(48)
   readonly collectionAddress: string;
+  // TO DO add validation
+  readonly overviewData: Object;
 }

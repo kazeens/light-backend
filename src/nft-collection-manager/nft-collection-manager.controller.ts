@@ -9,6 +9,7 @@ import {
   Headers,
   Put,
   Param,
+  BadRequestException,
 } from '@nestjs/common';
 import { NftCollectionManagerService } from 'src/nft-collection-manager/nft-collection-manager.service';
 import { CreateNftCollectionManagerDto } from 'src/dto/createNftCollectionManager.dto';
@@ -33,28 +34,8 @@ export class NftCollectionManagerController {
     @Body() createNftCollectionManagerDto: CreateNftCollectionManagerDto,
     @Headers() headers,
   ) {
-    if (!headers.testnet) {
-      try {
-        await this.httpService
-          .request({
-            url: 'https://tonapi.io/v1/nft/getCollection',
-            method: 'get',
-            params: {
-              account: createNftCollectionManagerDto.collectionAddress,
-            },
-            headers: {
-              Authorization: tonApiToken,
-            },
-          })
-          .toPromise();
-      } catch (error) {
-        return response.status(HttpStatus.BAD_REQUEST).json({
-          statusCode: 400,
-          message: 'Could not create transaction',
-          error: 'Bad request',
-        });
-      }
-    }
+    const isTestnet = headers.testnet === "true";
+    this.checkCollectionExistanceInBlockchain(createNftCollectionManagerDto.collectionAddress, isTestnet);
 
     const exiting =
       await this.nftCollectionManagerService.findByCollectionAddress(
@@ -69,6 +50,7 @@ export class NftCollectionManagerController {
       const newNftCollectionManager =
         await this.nftCollectionManagerService.createNftCollectionManager(
           createNftCollectionManagerDto,
+          isTestnet,
         );
 
       return response.status(HttpStatus.CREATED).json(newNftCollectionManager);
@@ -84,55 +66,30 @@ export class NftCollectionManagerController {
   @Put('/:address')
   async updateNftCollectionManagerContract(
     @Res() response,
-    @Param(':address') address,
+    @Param('address') address,
     @Body() updateNftCollectionManagerDto: UpdateNftCollectionManagerDto,
     @Headers() headers,
   ) {
+    const isTestnet = headers.testnet === "true";
+
     const existing =
       await this.nftCollectionManagerService.findByCollectionManagerAddress(
-        address
+        address,
+        isTestnet
       );
 
-    console.log('existing updateNftCollectionManagerContract', existing);
-
-
     if (!existing) {
-      return response.status(HttpStatus.BAD_REQUEST).json({
-        statusCode: 400,
+      throw new BadRequestException({
         message: 'Could not find collection',
-        error: 'Bad request',
       });
-    }
-
-    if (!headers.testnet) {
-      try {
-        const value = await this.httpService
-          .request({
-            url: 'https://tonapi.io/v1/nft/getCollection',
-            method: 'get',
-            params: {
-              account: updateNftCollectionManagerDto.collectionAddress,
-            },
-            headers: {
-              Authorization: tonApiToken,
-            },
-          })
-          .toPromise();
-        console.log('value for updatttee', value);
-      } catch (error) {
-        return response.status(HttpStatus.BAD_REQUEST).json({
-          statusCode: 400,
-          message: 'Could not update collection',
-          error: 'Bad request',
-        });
-      }
-    }
+    }    
 
     try {
       const updateNftCollectionManager =
         await this.nftCollectionManagerService.updateByNftCollectionManagerAddress(
           address,
           updateNftCollectionManagerDto,
+          isTestnet
         );
 
       return response.status(HttpStatus.OK).json(updateNftCollectionManager);
@@ -147,16 +104,63 @@ export class NftCollectionManagerController {
 
   @Get('/')
   async getAll(
-    @Query() { skip, limit = 10, ownerAddress }: ManagerQueryParams,
+    @Headers() headers,
+    @Query() { skip, limit = 20, ownerAddress }: ManagerQueryParams,
   ) {
-    const query = ownerAddress ? { ownerAddress } : {};
+    const isTestnet = headers.testnet === "true";
+
+    const baseQuery: any = { isTestnet };
+
+    if (ownerAddress) {
+      baseQuery.ownerAddress = ownerAddress;
+    }
 
     const result = await this.nftCollectionManagerService.findAll(
-      query,
+      baseQuery,
       skip,
       limit,
     );
 
     return result;
+  }
+
+  async checkExistance(address: string, isTestnet: boolean) {
+    const existing =
+      await this.nftCollectionManagerService.findByCollectionManagerAddress(
+        address,
+        isTestnet
+      );
+
+    if (!existing) {
+      throw new BadRequestException({
+        message: 'Could not find collection',
+        error: 'Bad request',
+      });
+    }
+  }
+
+  async checkCollectionExistanceInBlockchain(address: string, isTestnet: boolean) {
+    if(isTestnet) {
+      return;
+    }
+
+    try {
+      await this.httpService
+        .request({
+          url: 'https://tonapi.io/v1/nft/getCollection',
+          method: 'get',
+          params: {
+            account: address,
+          },
+          headers: {
+            Authorization: tonApiToken,
+          },
+        })
+        .toPromise();
+    } catch (error) {
+      throw new BadRequestException({
+        message: 'Could not update collection',
+      });
+    }
   }
 }

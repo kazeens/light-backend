@@ -14,9 +14,13 @@ export class NftCollectionManagerService {
 
   async createNftCollectionManager(
     createNftCollectionManagerDto: CreateNftCollectionManagerDto,
+    isTestnet: boolean,
   ): Promise<INftCollectionManager> {
     const newNftCollectionManager = new this.nftCollectionManagerModel(
-      createNftCollectionManagerDto,
+      {
+        ...createNftCollectionManagerDto,
+        isTestnet
+      },
     );
     return newNftCollectionManager.save();
   }
@@ -24,28 +28,29 @@ export class NftCollectionManagerService {
   async updateByNftCollectionManagerAddress(
     contractAddress: string,
     nftCollectionManagerDto: UpdateNftCollectionManagerDto,
+    isTestnet: boolean,
   ): Promise<INftCollectionManager> {
     const newNftCollectionManager =
       await this.nftCollectionManagerModel.updateOne(
         {
           contractAddress,
+          isTestnet,
         },
         { $set: nftCollectionManagerDto },
       );
 
-      console.log('newNftCollectionManager', newNftCollectionManager)
-
-      const updated = this.findByCollectionManagerAddress(contractAddress);
-      console.log('updated', updated)
+      const updated = this.findByCollectionManagerAddress(contractAddress, isTestnet);
 
       return updated;
   }
 
-  async findByCollectionManagerAddress(address: string) {
+  async findByCollectionManagerAddress(address: string, isTestnet: boolean) {
     const existingManagerContract =
       await this.nftCollectionManagerModel.findOne({
         contractAddress: address,
+        isTestnet,
       });
+
 
     return existingManagerContract;
   }
